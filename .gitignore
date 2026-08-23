@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (only used for local testing during development)
+node_modules/
+
+# Runtime data (created at container start, contains your personal config)
+data/
+config/config.json
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/

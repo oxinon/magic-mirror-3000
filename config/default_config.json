@@ -1,0 +1,182 @@
+{
+  "theme": "dark",
+  "language": "de",
+  "widgets": {
+    "clock": {
+      "enabled": true,
+      "position": "r1-c4",
+      "title": "",
+      "format24h": true,
+      "showSeconds": false,
+      "showDate": true,
+      "dateLocale": "de-DE",
+      "bold": true,
+      "span": 1
+    },
+    "calendar": {
+      "enabled": true,
+      "position": "r1-c1",
+      "title": "",
+      "icalUrl": "",
+      "maxEvents": 8,
+      "daysAhead": 14
+    },
+    "weather": {
+      "enabled": true,
+      "position": "r2-c4",
+      "title": "",
+      "location": "Hamburg",
+      "latitude": 53.5511,
+      "longitude": 9.9937,
+      "units": "celsius",
+      "showWarnings": true,
+      "windWarnKmh": 60,
+      "heatWarnC": 32,
+      "coldWarnC": -10
+    },
+    "news": {
+      "enabled": true,
+      "position": "r4-c2",
+      "title": "",
+      "sources": [
+        {
+          "name": "Tagesschau",
+          "feedUrl": "https://www.tagesschau.de/xml/rss2/"
+        }
+      ],
+      "maxItems": 8,
+      "scrollSpeedSec": 40,
+      "rotationSec": 45,
+      "span": 1
+    },
+    "crypto": {
+      "enabled": true,
+      "position": "r1-c2",
+      "title": "",
+      "symbols": [
+        "bitcoin",
+        "ethereum"
+      ],
+      "currency": "eur"
+    },
+    "todo": {
+      "enabled": false,
+      "position": "r4-c1",
+      "title": "",
+      "items": [
+        {
+          "text": "Müll rausbringen",
+          "done": false
+        },
+        {
+          "text": "Wocheneinkauf",
+          "done": false
+        }
+      ]
+    },
+    "quote": {
+      "enabled": false,
+      "position": "r2-c2",
+      "title": "",
+      "items": [
+        {
+          "text": "Was du heute kannst besorgen, das verschiebe nicht auf morgen.",
+          "author": "Sprichwort"
+        },
+        {
+          "text": "Der Weg ist das Ziel.",
+          "author": "Konfuzius"
+        },
+        {
+          "text": "Nichts ist so beständig wie der Wandel.",
+          "author": "Heraklit"
+        },
+        {
+          "text": "Wer die Ruhe in sich selbst nicht findet, sucht sie vergebens anderswo.",
+          "author": "La Rochefoucauld"
+        },
+        {
+          "text": "Man sieht nur mit dem Herzen gut.",
+          "author": "Antoine de Saint-Exupéry"
+        },
+        {
+          "text": "Es ist nicht genug zu wissen, man muss es auch anwenden.",
+          "author": "Johann Wolfgang von Goethe"
+        },
+        {
+          "text": "Wer immer tut, was er schon kann, bleibt immer, was er schon ist.",
+          "author": "Henry Ford"
+        }
+      ],
+      "span": 1
+    },
+    "stocks": {
+      "enabled": false,
+      "position": "r1-c2",
+      "title": "",
+      "symbols": [
+        "AAPL",
+        "MSFT"
+      ]
+    },
+    "serverStatus": {
+      "enabled": false,
+      "position": "r4-c4",
+      "title": "",
+      "filter": "",
+      "rotationSec": 15
+    },
+    "warnings": {
+      "enabled": true,
+      "position": "r2-c1",
+      "title": "",
+      "location": "Hamburg",
+      "ars": "020000000000"
+    },
+    "airQuality": {
+      "enabled": true,
+      "position": "r4-c4",
+      "title": "",
+      "location": "Hamburg",
+      "latitude": 53.5511,
+      "longitude": 9.9937
+    },
+    "elbePegel": {
+      "enabled": true,
+      "position": "r4-c1",
+      "title": "",
+      "station": "HAMBURG ST. PAULI"
+    },
+    "ews": {
+      "enabled": true,
+      "position": "r2-c2",
+      "title": ""
+    },
+    "defcon": {
+      "enabled": false,
+      "position": "r3-c2",
+      "span": 2,
+      "title": "",
+      "url": "http://defcon-assistant:5028/api/status.json",
+      "apiKey": "",
+      "rotationSec": 15
+    },
+    "compliments": {
+      "enabled": false,
+      "position": "r3-c2",
+      "span": 1,
+      "title": "",
+      "rotationSec": 10,
+      "items": [
+        "Du siehst heute gut aus!",
+        "Was für ein toller Tag mit dir!",
+        "Du schaffst das!",
+        "Dein Lächeln ist ansteckend!",
+        "Du bist heute besonders strahlend!",
+        "Weiter so!",
+        "Du machst das großartig!",
+        "Bleib so, wie du bist!"
+      ]
+    }
+  }
+}

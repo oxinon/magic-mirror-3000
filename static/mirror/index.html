@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Magic Mirror</title>
+    <link rel="stylesheet" href="/static/mirror.css?v=__ASSET_VERSION__">
+    <meta name="robots" content="noindex, nofollow">
+</head>
+
+<body>
+    <div class="mm-grid" id="mm-grid">
+        <div class="mm-cell" data-pos="r1-c1"></div>
+        <div class="mm-cell" data-pos="r1-c2"></div>
+        <div class="mm-cell" data-pos="r1-c3"></div>
+        <div class="mm-cell" data-pos="r1-c4"></div>
+        <div class="mm-cell" data-pos="r2-c1"></div>
+        <div class="mm-cell mm-cell-center" data-pos="r2-c2"></div>
+        <div class="mm-cell mm-cell-center" data-pos="r2-c3"></div>
+        <div class="mm-cell" data-pos="r2-c4"></div>
+        <div class="mm-cell" data-pos="r3-c1"></div>
+        <div class="mm-cell mm-cell-center" data-pos="r3-c2"></div>
+        <div class="mm-cell mm-cell-center" data-pos="r3-c3"></div>
+        <div class="mm-cell" data-pos="r3-c4"></div>
+        <div class="mm-cell" data-pos="r4-c1"></div>
+        <div class="mm-cell" data-pos="r4-c2"></div>
+        <div class="mm-cell" data-pos="r4-c3"></div>
+        <div class="mm-cell" data-pos="r4-c4"></div>
+    </div>
+
+    <script>
+        // API läuft auf demselben Host, aber auf API_PORT statt MIRROR_PORT.
+        // Der Platzhalter wird vom Server beim Ausliefern ersetzt (siehe app.py).
+        window.MM_API_PORT = __API_PORT__;
+    </script>
+    <script src="/static/mirror.js?v=__ASSET_VERSION__"></script>
+</body>
+
+</html>

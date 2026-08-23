@@ -1,0 +1,494 @@
+/* =========================================
+   MAGIC MIRROR ADMIN – zusätzliche Bausteine
+   (baut auf style.css / den bestehenden
+   CSS-Variablen und Card-Klassen auf)
+========================================= */
+
+.mm-widget-card {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.mm-widget-card:last-child {
+    border-bottom: none;
+}
+
+.mm-widget-head {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mm-widget-head-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.mm-widget-head-title .icon {
+    font-size: 1.2rem;
+}
+
+.mm-widget-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.mm-form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mm-form-row label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: .02em;
+}
+
+.mm-form-row input[type="text"],
+.mm-form-row input[type="url"],
+.mm-form-row input[type="number"],
+.mm-form-row select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--soft-surface);
+    color: var(--text);
+    font-size: .92rem;
+    font-family: inherit;
+}
+
+.mm-form-row input:focus,
+.mm-form-row select:focus {
+    outline: 2px solid var(--primary-700);
+    outline-offset: 1px;
+}
+
+.mm-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.mm-hint {
+    font-size: .78rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.mm-hint code {
+    background: var(--soft-surface);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+/* ---- An/Aus-Schalter ---- */
+.mm-switch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mm-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.mm-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.mm-switch-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.mm-switch-slider::before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.mm-switch input:checked+.mm-switch-slider {
+    background: linear-gradient(135deg, var(--primary-900), var(--primary-600));
+}
+
+.mm-switch input:checked+.mm-switch-slider::before {
+    transform: translateX(20px);
+}
+
+.mm-switch-label {
+    font-size: .85rem;
+    color: var(--text-secondary);
+}
+
+/* ---- 3x3 Positions-Wähler ---- */
+.mm-pos-picker {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 4px;
+    width: 132px;
+    height: 132px;
+    padding: 6px;
+    border-radius: var(--radius-md);
+    background: var(--soft-surface);
+    border: 1px solid var(--border);
+}
+
+.mm-pos-cell {
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.mm-pos-cell:hover {
+    background: var(--blue-50);
+}
+
+.mm-pos-cell.active {
+    background: linear-gradient(135deg, var(--primary-900), var(--primary-600));
+    border-color: var(--primary-700);
+}
+
+.mm-pos-label {
+    font-size: .72rem;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+/* ---- Tag-Eingabe (Krypto-Symbole) ---- */
+.mm-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--soft-surface);
+    min-height: 44px;
+    align-items: center;
+}
+
+.mm-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .8rem;
+}
+
+.mm-tag button {
+    all: unset;
+    cursor: pointer;
+    font-size: .85rem;
+    color: var(--text-secondary);
+    min-height: auto;
+    box-shadow: none;
+}
+
+.mm-tags input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: .85rem;
+    color: var(--text);
+    flex: 1;
+    min-width: 80px;
+    padding: 4px;
+}
+
+/* Höhere Spezifität als ".mm-form-row input[type=text] { width:100% }",
+   damit das Tag-Eingabefeld nicht auf volle Breite springt. */
+.mm-tags input[type="text"] {
+    width: auto;
+}
+
+.mm-tags-add-btn {
+    all: unset;
+    cursor: pointer;
+    background: var(--soft-surface-hover);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: .8rem;
+    flex-shrink: 0;
+    min-height: auto;
+    box-shadow: none;
+}
+
+.mm-tags-add-btn:hover {
+    color: var(--text);
+    transform: none;
+    box-shadow: none;
+}
+
+/* ---- Speicherleiste ---- */
+.mm-save-bar {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 0 4px;
+    margin-top: 8px;
+}
+
+.mm-save-msg {
+    font-size: .85rem;
+    color: var(--text-secondary);
+}
+
+.mm-save-msg.ok {
+    color: #22c55e;
+}
+
+.mm-save-msg.error {
+    color: #c0392b;
+}
+
+/* ---- Vorschau-Link-Karte ---- */
+.mm-preview-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.mm-preview-card .mm-preview-text {
+    font-size: .88rem;
+    color: var(--text-secondary);
+}
+
+/* ---- Mehrzeilige Listen-Editoren (News-Quellen, Notizen) ---- */
+.mm-list-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mm-list-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mm-list-row input[type="text"],
+.mm-list-row input[type="url"] {
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--soft-surface);
+    color: var(--text);
+    font-size: .88rem;
+    font-family: inherit;
+}
+
+.mm-list-row .mm-name-field {
+    flex: 0 0 160px;
+    width: 160px;
+    min-width: 110px;
+}
+
+.mm-list-row .mm-url-field {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 260px;
+}
+
+.mm-list-row .mm-text-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.mm-list-row-remove-spacer {
+    width: 26px;
+    flex-shrink: 0;
+}
+
+/* Spalten-Überschriften über den News-Quellen-Zeilen */
+.mm-list-col-labels {
+    padding: 0 2px;
+}
+
+.mm-list-col-labels span {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+    .mm-list-row {
+        flex-wrap: wrap;
+    }
+
+    .mm-list-row .mm-name-field,
+    .mm-list-row .mm-url-field {
+        flex: 1 1 100%;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .mm-list-col-labels {
+        display: none;
+    }
+}
+
+.mm-list-row-remove {
+    all: unset;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    min-height: auto;
+    box-shadow: none;
+    padding: 4px 8px;
+    flex-shrink: 0;
+}
+
+.mm-list-row-remove:hover {
+    color: #c0392b;
+}
+
+.mm-list-add-btn {
+    align-self: flex-start;
+    background: var(--soft-surface);
+    color: var(--text);
+    box-shadow: none;
+    padding: 8px 16px;
+    min-height: auto;
+    font-size: .85rem;
+}
+
+.mm-list-add-btn:hover {
+    transform: none;
+    background: var(--soft-surface-hover);
+    box-shadow: none;
+}
+
+/* ---- Standort-Suche (Wetter) ---- */
+.mm-location-search {
+    display: flex;
+    gap: 8px;
+}
+
+.mm-location-search input {
+    flex: 1;
+}
+
+.mm-location-search button {
+    flex-shrink: 0;
+    min-height: 42px;
+    padding: 0 16px;
+    font-size: .85rem;
+}
+
+.mm-location-results {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.mm-location-result {
+    font-size: .85rem;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--soft-surface);
+    cursor: pointer;
+}
+
+.mm-location-result:hover {
+    background: var(--soft-surface-hover);
+}
+
+.mm-location-current {
+    font-size: .78rem;
+    color: var(--text-secondary);
+}
+
+/* ---- Schnellauswahl (Warnungen-Widget) ---- */
+.mm-quick-cities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.mm-quick-cities button {
+    background: var(--soft-surface);
+    color: var(--text);
+    box-shadow: none;
+    padding: 6px 14px;
+    min-height: auto;
+    font-size: .82rem;
+    border: 1px solid var(--border);
+}
+
+.mm-quick-cities button:hover {
+    background: var(--soft-surface-hover);
+    transform: none;
+    box-shadow: none;
+}
+
+/* ---- Sprachauswahl im Einstellungen-Panel ---- */
+.settings-row-static {
+    cursor: default;
+}
+
+.settings-row-static:hover {
+    background: var(--soft-surface);
+    box-shadow: none;
+    transform: none;
+}
+
+.settings-row-select {
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+    .mm-widget-card {
+        grid-template-columns: 1fr;
+    }
+}

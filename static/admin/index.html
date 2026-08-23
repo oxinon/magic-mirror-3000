@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Magic Mirror</title>
+    <script>
+        (() => {
+            const theme = localStorage.getItem('oxinonTheme') || 'dark';
+            document.documentElement.dataset.theme = theme;
+        })();
+    </script>
+    <link rel="stylesheet" href="/static/style.css?v=__ASSET_VERSION__">
+    <link rel="stylesheet" href="/static/admin-extra.css?v=__ASSET_VERSION__">
+    <meta name="robots" content="noindex, nofollow">
+</head>
+
+<body>
+    <div class="page-fade"></div>
+
+    <header class="brand">
+        <div class="brand-text">
+            <div class="title">MAGIC MIRROR</div>
+            <div class="domain" id="txtSubtitle">Widget-Konfiguration</div>
+        </div>
+        <button type="button" class="menu-btn" id="menuBtn" aria-label="Menü öffnen" onclick="toggleSettingsPanel()">
+            <span class="menu-icon">
+                <span></span><span></span><span></span>
+            </span>
+        </button>
+    </header>
+
+    <div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsPanel()"></div>
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <span id="txtSettingsHeader">Einstellungen</span>
+            <button class="settings-close" onclick="closeSettingsPanel()">✕</button>
+        </div>
+        <div class="settings-body">
+            <div class="settings-section-label" id="txtAppearanceLabel">Erscheinungsbild</div>
+            <button type="button" class="settings-row" id="darkModeBtn" onclick="toggleDarkMode()">
+                <span class="settings-row-icon" id="themeIcon">🌙</span>
+                <span class="settings-row-text" id="txtDarkMode">Dark Mode</span>
+                <span class="settings-row-badge" id="themeStateLabel">Aus</span>
+            </button>
+            <hr class="settings-divider">
+            <div class="settings-section-label" id="txtMirrorSectionLabel">Spiegelanzeige</div>
+            <div class="settings-row settings-row-static">
+                <span class="settings-row-icon">🌐</span>
+                <span class="settings-row-text" id="txtLanguageLabel">Sprache</span>
+                <select id="mirrorLanguageSelect" class="settings-row-select" onchange="changeMirrorLanguage(this.value)">
+                    <option value="de">Deutsch</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <hr class="settings-divider">
+            <div class="settings-section-label" id="txtConfigSectionLabel">Konfiguration</div>
+            <button type="button" class="settings-row" onclick="resetConfig()">
+                <span class="settings-row-icon">↺</span>
+                <span class="settings-row-text" id="txtResetDefaults">Auf Standard zurücksetzen</span>
+            </button>
+        </div>
+        <div class="settings-footer">&copy; 2026 Magic Mirror</div>
+    </div>
+
+    <main class="container">
+        <div class="card mm-preview-card" style="margin-bottom:20px;">
+            <div>
+                <h2 style="margin-bottom:6px;" id="txtPreviewHeading">Spiegel-Anzeige</h2>
+                <div class="mm-preview-text" id="txtPreviewBody">
+                    Die Fullscreen-Anzeige läuft auf einem eigenen Port und aktualisiert sich automatisch,
+                    sobald hier gespeichert wird (Konfiguration wird alle 60&nbsp;s neu geladen).
+                </div>
+            </div>
+            <button type="button" onclick="openMirrorPreview()" id="txtOpenMirrorBtn">🖥 Spiegel öffnen</button>
+        </div>
+
+        <div class="card" id="main-card">
+            <h2 id="txtWidgetsHeading">Widgets</h2>
+            <div class="card-section">
+                <div id="widget-list"></div>
+            </div>
+
+            <div class="mm-save-bar">
+                <span class="mm-save-msg" id="save-msg"></span>
+                <button type="button" onclick="saveConfig()" id="txtSaveBtn">💾 Speichern</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.MM_MIRROR_PORT = __MIRROR_PORT__;
+    </script>
+    <script src="/static/admin.js?v=__ASSET_VERSION__"></script>
+</body>
+
+</html>

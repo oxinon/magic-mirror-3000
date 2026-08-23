@@ -1,0 +1,747 @@
+/* =========================================
+   MAGIC MIRROR – Fullscreen-Anzeige
+   Typografie trägt die Identität: eine helle,
+   sehr weit laufende Groteske für Zahlen (Uhr,
+   Kurse), eine ruhige Serife für Fließtext
+   (News, Termine). Ein einziger Akzentton
+   (gedämpftes Messing) statt des üblichen
+   Neongrüns auf Schwarz.
+   ========================================= */
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('/assets/fonts/inter-v13-latin-300.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/assets/fonts/inter-v13-latin-400.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/assets/fonts/inter-v13-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/assets/fonts/inter-v13-latin-700.woff2') format('woff2');
+}
+
+:root {
+    --mm-bg: #000000;
+    --mm-fg: #eef0f2;
+    --mm-fg-dim: #8b8f96;
+    --mm-fg-faint: #52555b;
+    --mm-accent: #c9a15a;
+    --mm-accent-dim: #7d6738;
+    --mm-up: #7fae7a;
+    --mm-down: #b96a5a;
+    --mm-amber: #f5b942;
+    --mm-red: #ff5555;
+    --mm-hair: rgba(255, 255, 255, 0.08);
+    --mm-gap: clamp(16px, 2.4vw, 40px);
+    --mm-pad: clamp(24px, 3.2vw, 56px);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--mm-bg);
+    color: var(--mm-fg);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow: hidden;
+    cursor: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.mm-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    width: 100vw;
+    height: 100vh;
+    padding: var(--mm-pad);
+    gap: var(--mm-gap);
+}
+
+.mm-cell {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Explizite Grid-Platzierung (statt reiner DOM-Reihenfolge), damit
+   einzelne Kacheln per JS über mehrere Spalten (grid-column) erweitert
+   werden können, z.B. das Nachrichten-Widget über bis zu 4 Felder.
+   Positionsnamen folgen dem Schema "r{Zeile}-c{Spalte}" im 4x4-Raster,
+   z.B. "r1-c1" (oben links) bis "r4-c4" (unten rechts). */
+.mm-cell[data-pos^="r1-"] {
+    grid-row: 1;
+}
+
+.mm-cell[data-pos^="r2-"] {
+    grid-row: 2;
+}
+
+.mm-cell[data-pos^="r3-"] {
+    grid-row: 3;
+}
+
+.mm-cell[data-pos^="r4-"] {
+    grid-row: 4;
+}
+
+.mm-cell[data-pos$="-c1"] {
+    grid-column: 1;
+}
+
+.mm-cell[data-pos$="-c2"] {
+    grid-column: 2;
+}
+
+.mm-cell[data-pos$="-c3"] {
+    grid-column: 3;
+}
+
+.mm-cell[data-pos$="-c4"] {
+    grid-column: 4;
+}
+
+.mm-cell[data-pos^="r1-"] {
+    justify-content: flex-start;
+}
+
+.mm-cell[data-pos^="r2-"],
+.mm-cell[data-pos^="r3-"] {
+    justify-content: center;
+}
+
+.mm-cell[data-pos^="r4-"] {
+    justify-content: flex-end;
+}
+
+.mm-cell[data-pos$="-c1"] {
+    align-items: flex-start;
+    text-align: left;
+}
+
+.mm-cell[data-pos$="-c2"],
+.mm-cell[data-pos$="-c3"] {
+    align-items: center;
+    text-align: center;
+}
+
+.mm-cell[data-pos$="-c4"] {
+    align-items: flex-end;
+    text-align: right;
+}
+
+.mm-cell-center {
+    pointer-events: none;
+}
+
+/* ---------- gemeinsamer Widget-Rahmen ---------- */
+.mm-widget {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 100%;
+    animation: mm-fade-in .8s ease both;
+}
+
+@keyframes mm-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mm-widget-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--mm-accent);
+    margin: 0;
+}
+
+/* ---------- Uhr ---------- */
+.mm-clock-time {
+    font-size: clamp(48px, 6.4vw, 92px);
+    font-weight: 300;
+    letter-spacing: .01em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mm-clock-time .mm-secs {
+    font-size: 0.42em;
+    color: var(--mm-fg-dim);
+    margin-left: 6px;
+}
+
+.mm-clock-date {
+    font-size: clamp(14px, 1.3vw, 18px);
+    color: var(--mm-fg-dim);
+    font-weight: 400;
+    text-transform: capitalize;
+}
+
+/* ---------- Kalender ---------- */
+.mm-cal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: clamp(13px, 1.05vw, 16px);
+}
+
+.mm-cal-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: baseline;
+    border-left: 2px solid var(--mm-accent-dim);
+    padding-left: 10px;
+}
+
+.mm-cal-when {
+    color: var(--mm-accent);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-size: .9em;
+}
+
+.mm-cal-title {
+    color: var(--mm-fg);
+    font-weight: 400;
+}
+
+.mm-cal-loc {
+    display: block;
+    color: var(--mm-fg-faint);
+    font-size: .85em;
+    margin-top: 1px;
+}
+
+/* ---------- News ---------- */
+.mm-news {
+    max-width: 100%;
+    width: 100%;
+}
+
+.mm-news-ticker {
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.mm-news-track {
+    display: inline-flex;
+    gap: 64px;
+    white-space: nowrap;
+    animation: mm-scroll linear infinite;
+}
+
+.mm-news-item {
+    font-size: clamp(14px, 1.15vw, 18px);
+    color: var(--mm-fg-dim);
+    font-weight: 300;
+}
+
+.mm-news-item b {
+    color: var(--mm-fg);
+    font-weight: 400;
+}
+
+@keyframes mm-scroll {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+/* ---------- Krypto ---------- */
+.mm-crypto-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: inherit;
+}
+
+.mm-crypto-row {
+    display: grid;
+    grid-template-columns: 3.4em 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.mm-crypto-sym {
+    font-size: 12px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--mm-fg-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mm-crypto-price {
+    font-size: clamp(18px, 1.7vw, 26px);
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+}
+
+.mm-crypto-change {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.mm-crypto-change.up {
+    color: var(--mm-up);
+}
+
+.mm-crypto-change.down {
+    color: var(--mm-down);
+}
+
+/* ---------- Leerzustand / Fehler ---------- */
+.mm-empty {
+    color: var(--mm-fg-faint);
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* ---------- Wetter ---------- */
+.mm-weather-main {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+}
+
+.mm-weather-icon {
+    font-size: clamp(28px, 3vw, 40px);
+    line-height: 1;
+    color: var(--mm-accent);
+}
+
+.mm-weather-temp {
+    font-size: clamp(40px, 5.2vw, 72px);
+    font-weight: 200;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mm-weather-loc {
+    font-size: clamp(13px, 1.05vw, 16px);
+    color: var(--mm-fg-dim);
+}
+
+.mm-weather-desc {
+    font-size: clamp(13px, 1.05vw, 16px);
+    color: var(--mm-fg-dim);
+    font-weight: 300;
+}
+
+.mm-weather-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: clamp(12px, .95vw, 14px);
+    color: var(--mm-fg-faint);
+}
+
+.mm-weather-warnings {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.mm-weather-warning {
+    font-size: 12px;
+    padding: 4px 9px;
+    border-radius: 4px;
+    border: 1px solid var(--mm-fg-faint);
+    display: inline-flex;
+    width: fit-content;
+}
+
+.mm-weather-warning.wsev-6 {
+    color: var(--mm-amber);
+    border-color: var(--mm-amber);
+    background: rgba(245, 185, 66, .1);
+}
+
+.mm-weather-warning.wsev-7 {
+    color: var(--mm-red);
+    border-color: var(--mm-red);
+    background: rgba(255, 85, 85, .1);
+}
+
+/* ---------- Notizen / To-Do ---------- */
+.mm-todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: clamp(13px, 1.05vw, 16px);
+}
+
+.mm-todo-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.mm-todo-check {
+    color: var(--mm-accent);
+    font-family: monospace;
+    flex-shrink: 0;
+}
+
+.mm-todo-item.done .mm-todo-text {
+    color: var(--mm-fg-faint);
+    text-decoration: line-through;
+}
+
+/* ---------- Nachrichten-Quellenlabel ---------- */
+.mm-news-source {
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mm-fg-faint);
+    margin-bottom: 2px;
+}
+
+/* ---------- Zitat des Tages ---------- */
+.mm-quote-text {
+    font-size: clamp(16px, 1.7vw, 26px);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.4;
+    max-width: 100%;
+    color: var(--mm-fg);
+}
+
+.mm-quote-text::before {
+    content: "„";
+}
+
+.mm-quote-text::after {
+    content: "“";
+}
+
+.mm-quote-author {
+    font-size: clamp(12px, 1vw, 15px);
+    color: var(--mm-accent);
+    margin-top: 4px;
+}
+
+.mm-quote-author::before {
+    content: "— ";
+}
+
+/* ---------- Server-Status ---------- */
+.mm-server-summary {
+    font-size: clamp(13px, 1.05vw, 16px);
+    color: var(--mm-fg-dim);
+    margin-bottom: 2px;
+}
+
+.mm-server-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: clamp(12px, .95vw, 14px);
+}
+
+.mm-server-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mm-server-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--mm-fg-faint);
+}
+
+.mm-server-dot.running {
+    background: var(--mm-up);
+    box-shadow: 0 0 6px var(--mm-up);
+}
+
+.mm-server-dot.stopped {
+    background: var(--mm-down);
+}
+
+.mm-server-name {
+    color: var(--mm-fg-dim);
+}
+
+/* ---------- Amtliche Warnungen ---------- */
+.mm-warn-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 26em;
+}
+
+.mm-warn-item {
+    font-size: clamp(12px, 1vw, 14px);
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--mm-fg-faint);
+}
+
+.mm-warn-item.wsev-6 {
+    color: var(--mm-amber);
+    border-color: var(--mm-amber);
+    background: rgba(245, 185, 66, .1);
+}
+
+.mm-warn-item.wsev-7 {
+    color: var(--mm-red);
+    border-color: var(--mm-red);
+    background: rgba(255, 85, 85, .1);
+}
+
+.mm-warn-title {
+    font-weight: 400;
+}
+
+.mm-warn-meta {
+    display: block;
+    font-size: .85em;
+    color: var(--mm-fg-faint);
+    margin-top: 2px;
+}
+
+.mm-warn-ok {
+    color: var(--mm-up);
+    font-size: clamp(13px, 1.05vw, 16px);
+}
+
+/* ---------- Luftqualität ---------- */
+.mm-aqi-main {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.mm-aqi-value {
+    font-size: clamp(36px, 4.4vw, 60px);
+    font-weight: 300;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mm-aqi-value.aqi-good {
+    color: var(--mm-up);
+}
+
+.mm-aqi-value.aqi-moderate {
+    color: var(--mm-amber);
+}
+
+.mm-aqi-value.aqi-poor {
+    color: var(--mm-red);
+}
+
+.mm-aqi-label {
+    font-size: clamp(12px, 1vw, 15px);
+    color: var(--mm-fg-dim);
+}
+
+.mm-aqi-details {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    font-size: clamp(11px, .92vw, 13px);
+    color: var(--mm-fg-faint);
+}
+
+/* ---------- Elbe-Pegelstand ---------- */
+.mm-pegel-main {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.mm-pegel-value {
+    font-size: clamp(36px, 4.4vw, 60px);
+    font-weight: 300;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mm-pegel-unit {
+    font-size: clamp(14px, 1.2vw, 18px);
+    color: var(--mm-fg-dim);
+}
+
+.mm-pegel-trend {
+    font-size: 1.1em;
+    margin-left: 2px;
+}
+
+.mm-pegel-station {
+    font-size: clamp(12px, 1vw, 15px);
+    color: var(--mm-fg-dim);
+    margin-top: 2px;
+}
+
+/* ---------- Apocalypse EWS ---------- */
+.mm-ews-main {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.mm-ews-level {
+    font-size: clamp(40px, 5vw, 68px);
+    font-weight: 700;
+    line-height: 1;
+}
+
+.mm-ews-level.lvl-low {
+    color: var(--mm-up);
+}
+
+.mm-ews-level.lvl-mid {
+    color: var(--mm-amber);
+}
+
+.mm-ews-level.lvl-high {
+    color: var(--mm-red);
+}
+
+.mm-ews-label {
+    font-size: clamp(12px, 1vw, 15px);
+    color: var(--mm-fg-dim);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+.mm-ews-stats {
+    font-size: clamp(11px, .92vw, 13px);
+    color: var(--mm-fg-faint);
+    margin-top: 4px;
+}
+
+/* ---------- DEFCON-Einschätzung ---------- */
+.mm-defcon-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px 20px;
+    width: 100%;
+}
+
+.mm-defcon-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 2px 0;
+}
+
+.mm-defcon-name {
+    font-size: clamp(13px, 1.05vw, 16px);
+    color: var(--mm-fg-dim);
+}
+
+.mm-defcon-value {
+    font-size: clamp(16px, 1.4vw, 22px);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding: 1px 8px;
+    border-radius: 4px;
+}
+
+.mm-defcon-value.wsev-6 {
+    color: var(--mm-amber);
+    background: rgba(245, 185, 66, .12);
+}
+
+.mm-defcon-value.wsev-7 {
+    color: var(--mm-red);
+    background: rgba(255, 85, 85, .12);
+}
+
+.mm-defcon-value.wsev-0 {
+    color: var(--mm-up);
+    background: rgba(127, 174, 122, .12);
+}
+
+/* ---------- Komplimente ---------- */
+.mm-compliment-text {
+    font-size: clamp(20px, 2.4vw, 36px);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.35;
+    color: var(--mm-accent);
+    max-width: 100%;
+}
+
+/* ---------- Responsive: kleinere Displays / Hochkant ---------- */
+@media (max-width: 900px) {
+    .mm-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(16, auto);
+    }
+
+    .mm-cell[data-pos] {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+    }
+
+    .mm-cell {
+        align-items: flex-start !important;
+        text-align: left !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mm-news-track {
+        animation: none;
+    }
+
+    .mm-widget {
+        animation: none;
+    }
+}

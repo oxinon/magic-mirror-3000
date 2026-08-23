@@ -1,0 +1,18 @@
+  # ── Magic Mirror – Admin :5031 / Spiegel :5032 ─────────────────
+  magic-mirror:
+    build:
+      context: ./magic-mirror
+    container_name: magic-mirror
+    ports:
+      - "5031:5031"   # Admin-Oberfläche (Widgets bearbeiten)
+      - "5032:5032"   # Fullscreen-Spiegelanzeige
+    environment:
+      - DATA_ROOT=/app/data
+    volumes:
+      - ./data/magic-mirror:/app/data
+      # Nur nötig, wenn das Server-Status-Widget aktiv ist (zeigt den Status
+      # deiner anderen Container). Read-only, wird sonst einfach ignoriert.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks:
+      - docker-net

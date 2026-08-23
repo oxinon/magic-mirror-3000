@@ -1,4 +1,4 @@
-# Magic Mirror
+# Magic Mirror 3000
 
 Ein selbst gehosteter, dockerisierter Ableger des klassischen
 [MagicMirror²](https://magicmirror.builders/)-Projekts: eine Fullscreen-Anzeige für einen
@@ -6,6 +6,8 @@ Wand-Bildschirm oder einen echten Zwei-Wege-Spiegel, plus eine eigene Admin-Ober
 Konfigurieren – kein manuelles Bearbeiten von Config-Dateien nötig.
 
 🇬🇧 [English version of this guide](README.md)
+
+![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
 Eigener Docker-Dienst. Zwei Ports:
 
@@ -364,3 +366,9 @@ sind manche Ecken außerhalb der ursprünglichen Umgebung (z.B. die Hamburg-last
 nicht perfekt allgemeingültig. Ein neues Widget hinzuzufügen bedeutet in der Regel: eine neue Route in
 `app.py`, ein Block in `widgetSpecificFields()` in `admin.js`, ein Renderer in `mirror.js`, sowie ein
 Eintrag in `config/default_config.json`.
+
+## Lizenz
+
+[GNU General Public License v3.0](LICENSE) – du darfst dieses Projekt frei nutzen, verändern und
+weiterverbreiten, auch kommerziell; abgeleitete Werke müssen unter derselben Lizenz stehen und ihren
+Quellcode offenlegen.

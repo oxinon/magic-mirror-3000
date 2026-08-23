@@ -1,10 +1,12 @@
-# Magic Mirror
+# Magic Mirror 3000
 
 A self-hosted, dockerized take on the classic [MagicMirror²](https://magicmirror.builders/) project: a
 fullscreen dashboard for a wall-mounted display or a real two-way mirror, plus a separate admin panel
 to configure everything — no editing config files by hand.
 
 🇩🇪 [Deutsche Version dieser Anleitung](README_DE.md)
+
+![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
 Two ports, one container:
 
@@ -281,3 +283,9 @@ Issues and pull requests are welcome — this started as a personal project, so 
 outside the author's own setup (Hamburg-centric defaults, for instance). Adding a new widget is
 generally a matter of: one new route in `app.py`, one block in `widgetSpecificFields()` in `admin.js`,
 one renderer in `mirror.js`, and an entry in `config/default_config.json`.
+
+## License
+
+[GNU General Public License v3.0](LICENSE) — you're free to use, modify, and redistribute this project,
+including commercially; derivative works must be distributed under the same license and keep the source
+code available.

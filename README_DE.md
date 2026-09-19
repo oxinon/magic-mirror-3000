@@ -9,17 +9,18 @@ Konfigurieren – kein manuelles Bearbeiten von Config-Dateien nötig.
 
 ![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
-Eigener Docker-Dienst. Zwei Ports:
+Ein Container, vier Ports:
 
 | Port | Zweck |
 |------|-------|
 | **5031** | Admin-Oberfläche (Widgets aktivieren, Position wählen, Felder bearbeiten) |
 | **5032** | Fullscreen-Spiegelanzeige (auf dem Raspberry Pi / Kiosk-Bildschirm öffnen) |
+| **5033** | Mobile Einkaufslisten-Ansicht (auf dem Smartphone öffnen) |
+| **5034** | Mobile Notizen-/To-Do-Ansicht (auf dem Smartphone öffnen) |
 
-Beide laufen im selben Container, aus einem `app.py` heraus (zwei Flask-Instanzen in
-einem Prozess). Der Fullscreen-Client holt sich seine Daten per `fetch()` vom
-Admin-Port – deshalb müssen beide Ports von dem Gerät aus erreichbar sein, auf
-dem der Spiegel läuft.
+Alle vier laufen aus einem `app.py` heraus (vier Flask-Instanzen in einem Prozess). Der Fullscreen-Client
+holt sich seine Daten per `fetch()` vom Admin-Port – deshalb müssen alle Ports von den Geräten aus erreichbar
+sein, auf denen die jeweilige Seite läuft.
 
 ![Magic Mirror Screenshot](pictures/1.png)
 
@@ -34,6 +35,14 @@ dem der Spiegel läuft.
   eigenen Werte, nie einen geteilten Schlüssel
 - **Live editierbar über die Web-Oberfläche** – Widget-Einstellungen landen in `config.json`, der
   Spiegel übernimmt Änderungen innerhalb von 60 Sekunden, kein Container-Neustart nötig
+- **Mobile Listen-Editoren** – Einkaufsliste und Notizen/To-Do bekommen jeweils eine eigene, handy-gerechte
+  Seite (Port 5033/5034), damit du unterwegs direkt vom Smartphone aus Einträge hinzufügen oder abhaken
+  kannst
+- **Swipe-Navigation auf Touchscreens** – auf einem Kiosk-Touchdisplay per Wisch-Geste zwischen Spiegel,
+  Einkaufsliste und To-Do im Kreis wechseln und Listen direkt am Bildschirm bearbeiten
+- **Automatische statische Veröffentlichung** – erzeugt in regelmäßigen Abständen eine eigenständige
+  HTML-Kopie des Spiegels und lädt sie per SFTP auf einen externen Webserver hoch (siehe
+  [weiter unten](#statische-spiegel-kopie--sftp-veröffentlichung))
 
 ## Widgets
 
@@ -49,7 +58,11 @@ dem der Spiegel läuft.
 - **Krypto-Kurse** – beliebige CoinGecko-Coin-IDs (z.B. `bitcoin`, `ethereum`,
   `solana`), Kurs + 24h-Änderung, Basis-Währung wählbar
 - **Notizen / To-Do** – frei editierbare Liste mit Erledigt-Haken; auf der
-  Spiegelanzeige nur zur Anzeige, nicht anklickbar (Bearbeitung im Admin-Panel)
+  Spiegelanzeige nur zur Anzeige, nicht anklickbar. Bearbeitung im Admin-Panel oder
+  bequem vom Handy aus über die eigene Seite auf **Port 5034**
+- **Einkaufsliste** – frei editierbare Liste, gleiches Verhalten wie Notizen/To-Do; Bearbeitung
+  im Admin-Panel oder vom Handy aus über die eigene Seite auf **Port 5033**. Erledigte
+  Artikel werden auf dem Spiegel ausgeblendet – dort steht immer nur, was noch zu besorgen ist
 - **Zitat des Tages** – wechselt automatisch um Mitternacht, eigene Liste frei
   editierbar (Zitat + Autor), kein externer Dienst nötig
 - **Aktienkurse** – über Yahoo Finance (kein API-Key, leicht
@@ -67,6 +80,9 @@ dem der Spiegel läuft.
 - **Elbe-Pegelstand** – aktueller Wasserstand über die offizielle
   PEGELONLINE-Schnittstelle der Wasserstraßen- und Schifffahrtsverwaltung,
   standardmäßig Pegel Hamburg St. Pauli
+- **Umweltstation** – Live-Werte deiner eigenen T-Display-S3-Sensorstation: Temperatur, Luftfeuchtigkeit,
+  Luftdruck und ein selbst berechneter Luftqualitätsindex (IAQ), dazu eine **Earthquake Alert**-Anzeige
+  und ein **Digitaler Eingang**-Statuschip (siehe [weiter unten](#umweltstation))
 - **Apocalypse Early Warning System** – trackt eine Kohorte von
   Business-Jets weltweit (ews.kylemcdonald.net von Kyle McDonald),
   Warnstufe 1–5 je nachdem wie viele gleichzeitig in der Luft sind im
@@ -84,12 +100,6 @@ heißen intern `r{Zeile}-c{Spalte}`, z.B. `r1-c1` (oben links) bis `r4-c4`
 werden von der Spiegelanzeige alle 60 Sekunden neu geladen (kein Neustart des
 Containers nötig).
 
-**Hinweis für bestehende Installationen:** Lief dein Spiegel vorher mit dem
-alten 3×3-Raster, werden deine gespeicherten Positionen beim nächsten Start
-automatisch auf sinnvolle Positionen im neuen 4×4-Raster übertragen – die
-Widgets bleiben an vergleichbarer Stelle, die neu hinzugekommene Zeile/Spalte
-in der Mitte bleibt zunächst frei für neue Widgets.
-
 ## Sprache der Spiegelanzeige und der Konfigurationsseite
 
 Über das Zahnrad-Menü im Admin-Panel (⚙️ oben rechts) → „Sprache" lässt sich
@@ -103,18 +113,14 @@ Seite; die Spiegelanzeige übernimmt die neue Sprache beim nächsten
 Config-Abgleich (spätestens nach 60 Sekunden).
 
 Nicht übersetzt werden Inhalte, die du selbst eingibst (Widget-Titel, Zitate,
-Notizen) oder die von externen Quellen kommen (Kalender-Termine, Nachrichten,
+Notizen, Einkaufslisten-Artikel) oder die von externen Quellen kommen (Kalender-Termine, Nachrichten,
 Region-Namen aus der DEFCON-API) – die zeigen immer die Sprache, in der sie
 tatsächlich vorliegen.
 
 **Titel-Felder:** Lässt du das Titel-Feld eines Widgets leer, wird automatisch
 die Übersetzung des Standardnamens angezeigt (z.B. „Wetter" / „Weather" je
 nach gewählter Sprache). Trägst du selbst einen Titel ein, bleibt der fest –
-unabhängig von der Sprachauswahl. Lief dein Spiegel schon vor der
-Sprachumschaltung, wurden die damals automatisch vergebenen deutschen
-Standardtitel beim ersten Start danach automatisch geleert (nicht aber
-Titel, die du selbst geändert hattest), damit der Sprachwechsel auch bei dir
-sichtbar wird.
+unabhängig von der Sprachauswahl.
 
 ## Google Kalender einrichten
 
@@ -187,11 +193,6 @@ ausreichend. Symbol-Format:
 - Krypto: `BTC-USD`
 - ETFs genauso wie Aktien, z.B. `VWCE.DE`
 
-**Hinweis:** Bis Anfang 2026 lief dieses Widget über Stooq – die haben seither
-einen Pflicht-API-Key eingeführt, daher der Wechsel zu Yahoo Finance. Alte,
-im Stooq-Format gespeicherte Symbole (`aapl.us`) werden beim nächsten Start
-automatisch ins neue Format (`AAPL`) migriert.
-
 ## Zitat des Tages
 
 Läuft komplett lokal, ohne externen Dienst. Eine Liste von Zitaten (Text +
@@ -230,6 +231,25 @@ Elbe-Pegel lassen sich im Admin-Panel über die (Teil-)Bezeichnung eintragen,
 z.B. `CUXHAVEN`, `HAMBURG HARBURG` oder `GEESTHACHT` – die vollständige Liste
 aller Pegel findet sich unter
 [pegelonline.wsv.de/webservices/rest-api/v2/stations.json](https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations.json).
+
+## Umweltstation
+
+Widget für eine selbst gebaute [T-Display-S3-Umwelt-/Erdbeben-Sensorstation](https://github.com/) im
+eigenen Netzwerk – kein externer Dienst, kein API-Key, nur die eigene JSON-Status-Adresse des Sensors
+(z.B. `http://192.168.1.50/api/status`).
+
+Zeigt:
+- **Temperatur, Luftfeuchtigkeit, Luftdruck** und einen selbst berechneten **Luftqualitätsindex (IAQ)**,
+  mit derselben Grün/Amber/Rot-Farbcodierung wie das Luftqualität-Widget
+- **Earthquake Alert** – wird aktiv, sobald der Beschleunigungs-Trigger des Sensors (bzw. sein
+  `quake_output`-Pin) eine plötzliche Erschütterung erkennt. Damit ein kurzer Trigger zwischen zwei
+  Abfragen nicht verloren geht, hält das Backend einen erkannten Alarm für 15 Sekunden als „aktiv"
+  fest, selbst wenn der Sensor selbst zwischenzeitlich schon wieder auf Ruhig zurückgesprungen ist
+- **Digitaler Eingang**-Chip – grün, wenn der digitale Eingang des Sensors an ist, grau wenn aus
+  (bildet ab, was du dort angeschlossen hast, z.B. einen Tür-/Fensterkontakt)
+
+Dieses Widget wird häufiger abgefragt als der Rest des Spiegels (standardmäßig alle 5 Sekunden), damit
+Earthquake Alert und Digitaler Eingang zügig reagieren.
 
 ## Apocalypse Early Warning System
 
@@ -289,6 +309,67 @@ ob ai-defcon.com gerade erreichbar ist. „Breite" lässt sich wie bei Uhr,
 Zitat und Nachrichten über 1–4 Kacheln einstellen; bei mehreren Regionen
 lohnt sich eine breitere Kachel, da die Liste dann mehrspaltig umbricht.
 
+## Einkaufsliste & To-Do – mobile Bearbeitung
+
+Beide Listen-Widgets (Einkaufsliste, Notizen/To-Do) lassen sich auf drei Wegen bearbeiten: direkt im
+Admin-Panel, oder über ihre eigene, handy-gerechte Seite:
+
+| Widget | Mobile Bearbeitungsseite |
+|---|---|
+| Einkaufsliste | `http://<server>:5033` |
+| Notizen / To-Do | `http://<server>:5034` |
+
+Beide Seiten übernehmen die dunkle Messing-Optik des Spiegels, sind safe-area-tauglich (Notch/Home-Indicator)
+und schreiben direkt in dieselbe `config.json`, die auch Admin-Panel und Spiegel nutzen – eine Änderung vom
+Handy aus erscheint also innerhalb des normalen Aktualisierungszyklus auf dem Spiegel, ganz ohne extra
+Sync-Schritt. Abgehakte Artikel wandern in einen eingeklappten „Erledigt"-Bereich; Löschen entfernt den
+Eintrag endgültig.
+
+## Swipe-Navigation (Touchscreen-Kioskmodus)
+
+Läuft der Spiegel auf einem Touchdisplay im Kioskmodus, kannst du überall auf dem Bildschirm nach links/rechts
+wischen, um im Kreis zwischen den drei Fullscreen-Seiten zu wechseln:
+
+```
+Spiegel (5032)  ⇄  Einkaufsliste (5033)  ⇄  To-Do (5034)  ⇄  zurück zum Spiegel
+```
+
+So lassen sich Einträge direkt am Wanddisplay hinzufügen oder abhaken, ohne das Handy zu zücken. Ein Swipe
+löst eine vollständige Seitennavigation aus (jede Ansicht läuft auf ihrem eigenen Port), abgestimmt über
+einen horizontalen Mindestabstand sowie eine vertikale Toleranz-/Zeitgrenze, damit Scrollen oder Antippen
+nicht versehentlich als Wisch-Geste erkannt wird.
+
+## Statische Spiegel-Kopie + SFTP-Veröffentlichung
+
+Der Spiegel kann sich in regelmäßigen Abständen selbst in eine einzelne, komplett eigenständige `index.html`
+rendern – gleiches Layout, gleicher live laufender Nachrichten-Ticker, gleiche Rotation – und diese
+automatisch auf einen externen Webserver veröffentlichen, sodass eine Webseite an anderer Stelle immer eine
+aktuelle Kopie deines Spiegels zeigt.
+
+**Funktionsweise:**
+- Alle *X* Minuten (Standard 30, im Admin-Panel einstellbar) rendert das Backend den aktuellen Spiegel-Stand
+  neu in eine statische `index.html` mit komplett eingebettetem CSS, JavaScript und Fonts – keine externen
+  Abhängigkeiten, die Datei kann also einfach irgendwohin hochgeladen werden und funktioniert sofort
+- Sensible Konfigurationswerte (deine Google-Kalender-Adresse, API-Keys usw.) werden vor dem Export
+  herausgefiltert – sie verlassen deinen Server nie
+- Die exportierte Seite lädt sich selbst regelmäßig neu, damit ein offen gelassener Browser-Tab auf der
+  veröffentlichten Kopie automatisch aktuell bleibt
+- Ein SFTP-Watcher beobachtet den lokalen Publish-Ordner und lädt jede geänderte Datei per SFTP auf deinen
+  Zielserver hoch (SHA-256-Änderungserkennung, atomarer Upload per Temp-Datei-Umbenennung)
+
+**Steuerung im Admin-Panel:**
+
+*Statische Spiegel-Kopie*
+- Toggle „Automatisch rendern" + Intervall in Minuten
+- „Publish-Verzeichnis": lokaler Ordner, in den `index.html` (plus Fonts/Assets) geschrieben wird.
+  Standard: `DATA_ROOT/publish`
+- „Jetzt rendern": löst sofort einen Render aus, unabhängig vom Intervall
+
+*SFTP-Veröffentlichung*
+- Beobachtet das obige Publish-Verzeichnis und lädt geänderte Dateien hochkant per SFTP hoch, sobald sich
+  ihr Inhalt ändert
+- „Verbindung testen" prüft Host/User/Passwort-oder-Key, bevor du scharfschaltest
+
 ## Einbindung in `docker-compose.yml`
 
 Baustein für deine bestehende Compose-Datei (siehe
@@ -302,6 +383,8 @@ Baustein für deine bestehende Compose-Datei (siehe
     ports:
       - "5031:5031"   # Admin-Oberfläche
       - "5032:5032"   # Fullscreen-Spiegel
+      - "5033:5033"   # Einkaufsliste (mobil)
+      - "5034:5034"   # To-Do (mobil)
     environment:
       - DATA_ROOT=/app/data
     volumes:
@@ -330,20 +413,24 @@ docker compose up -d --build magic-mirror
 - Admin: `http://<server>:5031`
 - Spiegel (Kiosk-Browser im Fullscreen-Modus, z.B. `chromium --kiosk
   http://<server>:5032`): `http://<server>:5032`
+- Einkaufsliste (Handy): `http://<server>:5033`
+- To-Do (Handy): `http://<server>:5034`
 
 ## Lokal ohne Docker testen
 
 ```bash
 cd magic-mirror
 pip install -r requirements.txt
-DATA_ROOT=./data API_PORT=5031 MIRROR_PORT=5032 python3 app.py
+DATA_ROOT=./data API_PORT=5031 MIRROR_PORT=5032 SHOPPING_PORT=5033 TODO_PORT=5034 python3 app.py
 ```
 
 ## Aufbau
 
 ```
 magic-mirror/
-├── app.py                     # Flask-Backend (API + zwei statische Frontends)
+├── app.py                     # Flask-Backend (API + vier statische Frontends)
+├── static_export.py           # Renderer für die statische Spiegel-Kopie + Scheduler
+├── sftp_sync.py                # SFTP-Publish-Watcher
 ├── requirements.txt
 ├── Dockerfile
 ├── config/default_config.json # Werkseinstellung, wird beim ersten Start kopiert
@@ -351,12 +438,24 @@ magic-mirror/
     ├── admin/                 # Konfigurationsoberfläche (Port 5031)
     │   ├── index.html
     │   ├── admin.js
+    │   ├── static-mirror-admin.js  # Steuerung für die Static-Export-/SFTP-Karten
     │   ├── style.css          # dein bestehendes Design-System
     │   └── admin-extra.css    # Zusatzkomponenten (Positions-Picker, Switches …)
-    └── mirror/                # Fullscreen-Anzeige (Port 5032)
+    ├── mirror/                # Fullscreen-Anzeige (Port 5032)
+    │   ├── index.html
+    │   ├── mirror.js
+    │   ├── mirror.css
+    │   └── swipe-nav.js
+    ├── shopping/               # Einkaufslisten-UI mobil (Port 5033)
+    │   ├── index.html
+    │   ├── shopping.js
+    │   ├── shopping.css
+    │   └── swipe-nav.js
+    └── todo/                   # To-Do-UI mobil (Port 5034)
         ├── index.html
-        ├── mirror.js
-        └── mirror.css
+        ├── todo.js
+        ├── todo.css
+        └── swipe-nav.js
 ```
 
 ## Mitwirken

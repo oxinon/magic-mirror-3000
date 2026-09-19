@@ -24,13 +24,20 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from icalendar import Calendar
 
+import sftp_sync
+from static_export import StaticMirrorScheduler, DEFAULT_INTERVAL_MIN
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_ROOT = os.environ.get("DATA_ROOT", "/app/data")
 CONFIG_PATH = os.path.join(DATA_ROOT, "config.json")
 DEFAULT_CONFIG_PATH = os.path.join(BASE_DIR, "config", "default_config.json")
+STATIC_MIRROR_SETTINGS_PATH = os.path.join(DATA_ROOT, "static_mirror_settings.json")
+SFTP_SETTINGS_PATH = os.path.join(DATA_ROOT, "sftp_settings.json")
 
 API_PORT = int(os.environ.get("API_PORT", "5031"))
 MIRROR_PORT = int(os.environ.get("MIRROR_PORT", "5032"))
+SHOPPING_PORT = int(os.environ.get("SHOPPING_PORT", "5033"))
+TODO_PORT = int(os.environ.get("TODO_PORT", "5034"))
 
 # Cache-Busting: ändert sich bei jedem Containerstart (= nach jedem Rebuild),
 # damit Browser nach einem Update nicht versehentlich eine alte, gecachte
@@ -45,6 +52,14 @@ _config_lock = threading.Lock()
 # Kleine In-Memory-Caches, damit Kalender/News/Krypto nicht bei jedem
 # Mirror-Tick neu abgerufen werden.
 _cache = {}
+
+# Hält einen erkannten Erdbeben-Alarm für diese Dauer sichtbar, auch wenn
+# das rohe "triggered"-Flag (bzw. quake_output) vom Sensor selbst schon
+# wieder auf false/0 zurückgesprungen ist, bevor die nächste Abfrage
+# stattfindet -- sonst kann ein sehr kurzer Trigger zwischen zwei
+# 5-Sekunden-Abfragen komplett untergehen und nie sichtbar werden.
+_quake_latch_until = {}  # url -> epoch-Sekunde, bis wann noch "aktiv" gezeigt wird
+QUAKE_LATCH_SECONDS = 15
 CACHE_TTL = {
     "calendar": 300,     # 5 Minuten
     "news": 600,         # 10 Minuten
@@ -57,6 +72,7 @@ CACHE_TTL = {
     "elbe-pegel": 900,   # 15 Minuten
     "ews": 1200,         # 20 Minuten (Quelle aktualisiert alle 30 Minuten)
     "defcon": 300,       # 5 Minuten
+    "env-sensor": 5,     # 5 Sekunden -- schnelleres Polling wegen Digital-Ein-/Ausgängen
 }
 
 
@@ -150,6 +166,67 @@ def save_config(cfg, lock=True):
         _write()
 
 
+# ---------------------------------------------------------------------------
+# Statische Spiegel-Kopie & SFTP-Veröffentlichung -- Settings
+# ---------------------------------------------------------------------------
+_static_mirror_lock = threading.Lock()
+_sftp_settings_lock = threading.Lock()
+
+DEFAULT_STATIC_MIRROR_SETTINGS = {
+    "enabled": False,
+    "interval_min": DEFAULT_INTERVAL_MIN,
+    "publish_dir": os.path.join(DATA_ROOT, "publish"),
+    # Wo die vier inter-v13-latin-*.woff2 tatsächlich liegen -- siehe Hinweis
+    # in static_export.render_static_mirror(). Leer = bester Rateversuch.
+    "fonts_dir": "",
+}
+
+DEFAULT_SFTP_SETTINGS = {
+    "enabled": False,
+    "host": "", "port": 22, "user": "", "password": "",
+    "key_file": "", "key_passphrase": "",
+    "remote_dir": "/", "host_key_policy": "auto",
+    "check_interval_sec": 30, "upload_retry_sec": 60,
+    "force_reupload_sec": 0, "timeout_sec": 20,
+}
+
+
+def _load_json_settings(path, defaults, lock):
+    with lock:
+        if not os.path.exists(path):
+            return dict(defaults)
+        with open(path, "r", encoding="utf-8") as f:
+            saved = json.load(f)
+        merged = dict(defaults)
+        merged.update(saved)
+        return merged
+
+
+def _save_json_settings(path, settings, lock):
+    with lock:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp_path = path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+
+
+def load_static_mirror_settings():
+    return _load_json_settings(STATIC_MIRROR_SETTINGS_PATH, DEFAULT_STATIC_MIRROR_SETTINGS, _static_mirror_lock)
+
+
+def save_static_mirror_settings(settings):
+    _save_json_settings(STATIC_MIRROR_SETTINGS_PATH, settings, _static_mirror_lock)
+
+
+def load_sftp_settings():
+    return _load_json_settings(SFTP_SETTINGS_PATH, DEFAULT_SFTP_SETTINGS, _sftp_settings_lock)
+
+
+def save_sftp_settings(settings):
+    _save_json_settings(SFTP_SETTINGS_PATH, settings, _sftp_settings_lock)
+
+
 GRID_ROWS = 4
 GRID_COLS = 4
 POSITIONS = [f"r{r}-c{c}" for r in range(1, GRID_ROWS + 1) for c in range(1, GRID_COLS + 1)]
@@ -190,6 +267,21 @@ api_app = Flask(__name__, static_folder=None)
 CORS(api_app, resources={r"/api/*": {"origins": "*"}})
 
 mirror_app = Flask(__name__, static_folder=None)
+shopping_app = Flask(__name__, static_folder=None)
+todo_app = Flask(__name__, static_folder=None)
+
+# Rendert alle X Minuten eine eigenständige, hochladbare Kopie der
+# Spiegel-Anzeige (siehe static_export.py). Läuft standardmäßig nicht --
+# erst wenn "enabled" in static_mirror_settings.json (bzw. per Admin-UI-
+# Toggle) gesetzt wird, siehe Startsektion unten.
+static_mirror_scheduler = StaticMirrorScheduler(api_app, BASE_DIR, load_static_mirror_settings)
+
+# Beobachtet den publish_dir der obigen Kopie und lädt geänderte Dateien
+# per SFTP hoch (siehe sftp_sync.py). Ebenfalls standardmäßig aus.
+sftp_sync_service = sftp_sync.SftpSyncService(
+    load_sftp_settings,
+    lambda: load_static_mirror_settings().get("publish_dir") or os.path.join(DATA_ROOT, "publish"),
+)
 
 
 # ---- Admin (statisch) ------------------------------------------------------
@@ -210,20 +302,58 @@ def admin_static(path):
 
 
 # ---- Mirror (statisch, eigener Port) ---------------------------------------
+def _render_screen_html(path):
+    """Liest ein Screen-Template und ersetzt alle gemeinsamen Platzhalter --
+    genutzt von mirror_index/shopping_index/todo_index, damit die drei
+    Screens (und die Wisch-Navigation zwischen ihnen) nicht in drei leicht
+    auseinanderlaufenden Kopien derselben Ersetzungslogik gepflegt werden."""
+    with open(path, "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("__API_PORT__", str(API_PORT))
+    html = html.replace("__MIRROR_PORT__", str(MIRROR_PORT))
+    html = html.replace("__SHOPPING_PORT__", str(SHOPPING_PORT))
+    html = html.replace("__TODO_PORT__", str(TODO_PORT))
+    html = html.replace("__ASSET_VERSION__", ASSET_VERSION)
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+
 @mirror_app.route("/")
 @mirror_app.route("/index.html")
 def mirror_index():
     path = os.path.join(BASE_DIR, "static", "mirror", "index.html")
-    with open(path, "r", encoding="utf-8") as f:
-        html = f.read()
-    html = html.replace("__API_PORT__", str(API_PORT))
-    html = html.replace("__ASSET_VERSION__", ASSET_VERSION)
-    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+    return _render_screen_html(path)
+
 
 
 @mirror_app.route("/static/<path:path>")
 def mirror_static(path):
     return send_from_directory(os.path.join(BASE_DIR, "static", "mirror"), path)
+
+
+# ---- Einkaufsliste (eigenes Handy-freundliches UI, eigener Port) -----------
+@shopping_app.route("/")
+@shopping_app.route("/index.html")
+def shopping_index():
+    path = os.path.join(BASE_DIR, "static", "shopping", "index.html")
+    return _render_screen_html(path)
+
+
+@shopping_app.route("/static/<path:path>")
+def shopping_static(path):
+    return send_from_directory(os.path.join(BASE_DIR, "static", "shopping"), path)
+
+
+# ---- Notizen/To-Do (eigenes Handy-freundliches UI, eigener Port) ----------
+@todo_app.route("/")
+@todo_app.route("/index.html")
+def todo_index():
+    path = os.path.join(BASE_DIR, "static", "todo", "index.html")
+    return _render_screen_html(path)
+
+
+@todo_app.route("/static/<path:path>")
+def todo_static(path):
+    return send_from_directory(os.path.join(BASE_DIR, "static", "todo"), path)
 
 
 # ---------------------------------------------------------------------------
@@ -421,6 +551,110 @@ def api_health():
 
 
 # ---------------------------------------------------------------------------
+# API: Statische Spiegel-Kopie (periodischer HTML-Export für externes Hosting)
+# ---------------------------------------------------------------------------
+@api_app.route("/api/static-mirror/settings", methods=["GET"])
+def api_static_mirror_get_settings():
+    return jsonify({"ok": True, "settings": load_static_mirror_settings()})
+
+
+@api_app.route("/api/static-mirror/settings", methods=["POST"])
+def api_static_mirror_set_settings():
+    try:
+        body = request.get_json(force=True) or {}
+        settings = dict(DEFAULT_STATIC_MIRROR_SETTINGS)
+        settings.update({k: body[k] for k in DEFAULT_STATIC_MIRROR_SETTINGS if k in body})
+        settings["interval_min"] = max(1, float(settings.get("interval_min") or DEFAULT_INTERVAL_MIN))
+        settings["publish_dir"] = (settings.get("publish_dir") or "").strip() or DEFAULT_STATIC_MIRROR_SETTINGS["publish_dir"]
+        save_static_mirror_settings(settings)
+        if settings["enabled"]:
+            static_mirror_scheduler.start()
+        else:
+            static_mirror_scheduler.stop()
+        return jsonify({"ok": True, "settings": settings})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+@api_app.route("/api/static-mirror/render-now", methods=["POST"])
+def api_static_mirror_render_now():
+    ok = static_mirror_scheduler.render_now()
+    return jsonify({
+        "ok": ok,
+        "msg": static_mirror_scheduler.last_error,
+        "last_render_ts": static_mirror_scheduler.last_render_ts,
+    })
+
+
+@api_app.route("/api/static-mirror/status")
+def api_static_mirror_status():
+    return jsonify({
+        "ok": True,
+        "running": static_mirror_scheduler.is_running(),
+        "last_render_ts": static_mirror_scheduler.last_render_ts,
+        "last_error": static_mirror_scheduler.last_error,
+    })
+
+
+# ---------------------------------------------------------------------------
+# API: SFTP-Veröffentlichung der statischen Spiegel-Kopie
+# ---------------------------------------------------------------------------
+@api_app.route("/api/sftp/settings", methods=["GET"])
+def api_sftp_get_settings():
+    settings = load_sftp_settings()
+    settings_out = dict(settings)
+    settings_out["password"] = "•••••" if settings.get("password") else ""
+    settings_out["key_passphrase"] = "•••••" if settings.get("key_passphrase") else ""
+    return jsonify({"ok": True, "settings": settings_out})
+
+
+@api_app.route("/api/sftp/settings", methods=["POST"])
+def api_sftp_set_settings():
+    try:
+        body = request.get_json(force=True) or {}
+        settings = load_sftp_settings()
+        for key in DEFAULT_SFTP_SETTINGS:
+            if key not in body:
+                continue
+            # Maskierte Platzhalter aus dem GET nicht versehentlich zurückschreiben.
+            if key in ("password", "key_passphrase") and body[key] == "•••••":
+                continue
+            settings[key] = body[key]
+        save_sftp_settings(settings)
+        if settings.get("enabled"):
+            sftp_sync_service.start()
+        else:
+            sftp_sync_service.stop()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+@api_app.route("/api/sftp/test", methods=["POST"])
+def api_sftp_test():
+    try:
+        body = request.get_json(force=True) or {}
+        settings = load_sftp_settings()
+        for key in DEFAULT_SFTP_SETTINGS:
+            if key in body and not (key in ("password", "key_passphrase") and body[key] == "•••••"):
+                settings[key] = body[key]
+        sftp_sync.test_connection(settings)
+        return jsonify({"ok": True, "msg": "Verbindung erfolgreich."})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)})
+
+
+@api_app.route("/api/sftp/status")
+def api_sftp_status():
+    return jsonify({
+        "ok": True,
+        "running": sftp_sync_service.is_running(),
+        "last_success_ts": sftp_sync_service.last_success_ts,
+        "last_error": sftp_sync_service.last_error,
+    })
+
+
+# ---------------------------------------------------------------------------
 # API: DEFCON-Einschätzungen (ai-defcon.com / defcon-assistant)
 # ---------------------------------------------------------------------------
 def defcon_severity(value):
@@ -473,6 +707,144 @@ def api_defcon():
         return jsonify({"ok": True, **result})
     except Exception as e:
         return jsonify({"ok": False, "msg": f"DEFCON-Daten nicht abrufbar: {e}", "regions": []})
+
+
+# ---------------------------------------------------------------------------
+# API: T-Display-S3 Umwelt-/Erdbebenstation (eigenes MicroPython-Projekt,
+# siehe /api/status dort für das Rohformat)
+# ---------------------------------------------------------------------------
+@api_app.route("/api/env-sensor")
+def api_env_sensor():
+    cfg = load_config()
+    wcfg = cfg.get("widgets", {}).get("envSensor", {})
+    url = (wcfg.get("url") or "").strip()
+
+    if not url:
+        return jsonify({"ok": False, "msg": "Keine Sensor-Adresse konfiguriert."})
+
+    cache_key = f"env-sensor:{url}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return jsonify({"ok": True, **cached, "cached": True})
+
+    try:
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        data = r.json()
+        quake = data.get("quake") or {}
+
+        # Digitaler Eingang: dein Feld heißt "gpio11_input". Invertierte
+        # Logik (aktiv-low, typisch für Pull-up-Eingänge): 0 = EIN, 1 = AUS.
+        # Fehlt das Feld (ältere Firmware ohne diesen Eingang), bleibt
+        # digitalInputOn = None, das Frontend blendet den Chip dann aus,
+        # statt fälschlich "Aus" anzuzeigen.
+        digital_raw = data.get("gpio11_input")
+        digital_on = (digital_raw == 0) if digital_raw is not None else None
+
+        # Erdbeben-Alarm: sowohl das softwareseitige STA/LTA-"triggered"-Flag
+        # als auch der hardwareseitige "quake_output" (1 = aktiv) zählen als
+        # Trigger -- ANNAHME: quake_output ist aktiv-high (1 = Alarm aktiv).
+        # Falls bei dir umgekehrt (0 = aktiv), hier "== 1" auf "== 0" ändern.
+        # Da beide Quellen vermutlich nur kurz anschlagen, bevor sie selbst
+        # zurückspringen, wird ein erkannter Trigger für QUAKE_LATCH_SECONDS
+        # "festgehalten", damit er bei einem 5s-Poll auch sicher sichtbar
+        # wird, statt zwischen zwei Abfragen unterzugehen.
+        raw_triggered = bool(quake.get("triggered")) or (data.get("quake_output") == 1)
+        now = time.time()
+        if raw_triggered:
+            _quake_latch_until[url] = now + QUAKE_LATCH_SECONDS
+        quake_triggered_effective = raw_triggered or (now < _quake_latch_until.get(url, 0))
+
+        result = {
+            "temp": data.get("temp_sts35"),
+            "humidity": data.get("humidity"),
+            "pressure": data.get("pressure"),
+            "gas": data.get("gas"),
+            "iaqScore": data.get("iaq_score"),
+            "accel": {
+                "x": data.get("accel_x"),
+                "y": data.get("accel_y"),
+                "z": data.get("accel_z"),
+            },
+            "quakeTriggered": quake_triggered_effective,
+            "quakeRatio": quake.get("ratio"),
+            "quakePeakRatio": quake.get("peak_ratio"),
+            "digitalInputOn": digital_on,
+            "wifiIp": data.get("wifi_ip"),
+        }
+        cache_set(cache_key, result)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": f"Sensor-Daten nicht abrufbar: {e}"})
+
+
+# ---------------------------------------------------------------------------
+# API: Einkaufsliste & Notizen/To-Do (geteilte Quelle mit den Admin-Widgets --
+# alle drei (Admin-UI, Einkaufslisten-Handy-UI, Todo-Handy-UI) lesen/schreiben
+# dieselbe config.json, damit keine Bearbeitung auseinanderlaufen kann. Der
+# Spiegel selbst liest beim normalen periodischen Config-Reload alle 60s mit,
+# braucht also kein eigenes Polling. Beide Widgets nutzen exakt dasselbe
+# {text, done}-Item-Format, daher eine gemeinsame Reinigungsfunktion.)
+# ---------------------------------------------------------------------------
+def _clean_checklist_items(raw_items):
+    cleaned = []
+    for it in raw_items or []:
+        if not isinstance(it, dict):
+            continue
+        text = str(it.get("text", "")).strip()
+        if not text:
+            continue
+        cleaned.append({"text": text, "done": bool(it.get("done"))})
+    return cleaned
+
+
+@api_app.route("/api/shopping-list", methods=["GET"])
+def api_shopping_list_get():
+    cfg = load_config()
+    items = cfg.get("widgets", {}).get("shoppingList", {}).get("items", [])
+    return jsonify({"ok": True, "items": items})
+
+
+@api_app.route("/api/shopping-list", methods=["POST"])
+def api_shopping_list_set():
+    try:
+        body = request.get_json(force=True) or {}
+        if not isinstance(body.get("items"), list):
+            return jsonify({"ok": False, "msg": "'items' muss eine Liste sein."}), 400
+        cleaned = _clean_checklist_items(body["items"])
+        cfg = load_config()
+        cfg.setdefault("widgets", {}).setdefault("shoppingList", {})["items"] = cleaned
+        save_config(cfg)
+        return jsonify({"ok": True, "items": cleaned})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+# ---------------------------------------------------------------------------
+# API: Notizen/To-Do (geteilte Quelle mit dem Admin-Widget, gleiches Muster
+# wie die Einkaufsliste oben -- eigene Route, aber dieselbe Reinigungslogik,
+# da beide Widgets exakt dasselbe {text, done}-Item-Format nutzen)
+# ---------------------------------------------------------------------------
+@api_app.route("/api/todo-list", methods=["GET"])
+def api_todo_list_get():
+    cfg = load_config()
+    items = cfg.get("widgets", {}).get("todo", {}).get("items", [])
+    return jsonify({"ok": True, "items": items})
+
+
+@api_app.route("/api/todo-list", methods=["POST"])
+def api_todo_list_set():
+    try:
+        body = request.get_json(force=True) or {}
+        if not isinstance(body.get("items"), list):
+            return jsonify({"ok": False, "msg": "'items' muss eine Liste sein."}), 400
+        cleaned = _clean_checklist_items(body["items"])
+        cfg = load_config()
+        cfg.setdefault("widgets", {}).setdefault("todo", {})["items"] = cleaned
+        save_config(cfg)
+        return jsonify({"ok": True, "items": cleaned})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 400
 
 
 # ---------------------------------------------------------------------------
@@ -1041,7 +1413,25 @@ def run_mirror():
     mirror_app.run(host="0.0.0.0", port=MIRROR_PORT, threaded=True)
 
 
+def run_shopping():
+    shopping_app.run(host="0.0.0.0", port=SHOPPING_PORT, threaded=True)
+
+
+def run_todo():
+    todo_app.run(host="0.0.0.0", port=TODO_PORT, threaded=True)
+
+
 if __name__ == "__main__":
     t = threading.Thread(target=run_mirror, daemon=True)
     t.start()
+    t2 = threading.Thread(target=run_shopping, daemon=True)
+    t2.start()
+    t3 = threading.Thread(target=run_todo, daemon=True)
+    t3.start()
+
+    if load_static_mirror_settings().get("enabled"):
+        static_mirror_scheduler.start()
+    if load_sftp_settings().get("enabled"):
+        sftp_sync_service.start()
+
     api_app.run(host="0.0.0.0", port=API_PORT, threaded=True)

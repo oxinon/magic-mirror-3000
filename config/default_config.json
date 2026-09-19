@@ -177,6 +177,20 @@
         "Du machst das großartig!",
         "Bleib so, wie du bist!"
       ]
+    },
+    "envSensor": {
+      "enabled": false,
+      "position": "r4-c3",
+      "span": 1,
+      "title": "",
+      "url": "http://192.168.1.50/api/status"
+    },
+    "shoppingList": {
+      "enabled": false,
+      "position": "r3-c1",
+      "span": 1,
+      "title": "",
+      "items": []
     }
   }
 }

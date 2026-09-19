@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0" />
+    <title>Einkaufsliste</title>
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="/static/shopping.css?v=__ASSET_VERSION__">
+    <meta name="robots" content="noindex, nofollow">
+</head>
+
+<body>
+    <div class="sl-wrap">
+        <header class="sl-header">
+            <h1 id="slTitle">Einkaufsliste</h1>
+            <span class="sl-count" id="slCount"></span>
+        </header>
+
+        <form class="sl-add-form" id="slAddForm">
+            <input type="text" id="slAddInput" placeholder="Artikel hinzufügen…" autocomplete="off" autocapitalize="sentences">
+            <button type="submit" class="sl-add-btn" aria-label="Hinzufügen">+</button>
+        </form>
+
+        <div class="sl-list" id="slList">
+            <div class="sl-empty" id="slEmpty">Einkaufsliste ist leer</div>
+        </div>
+
+        <div class="sl-footer">
+            <button type="button" class="sl-clear-btn" id="slClearBtn">Erledigte entfernen</button>
+            <span class="sl-status" id="slStatus"></span>
+        </div>
+    </div>
+
+    <div class="mm-swipe-dots" aria-hidden="true">
+        <span class="mm-swipe-dot"></span>
+        <span class="mm-swipe-dot"></span>
+        <span class="mm-swipe-dot"></span>
+    </div>
+
+    <script>
+        window.MM_API_PORT = __API_PORT__;
+        window.MM_MIRROR_PORT = __MIRROR_PORT__;
+        window.MM_SHOPPING_PORT = __SHOPPING_PORT__;
+        window.MM_TODO_PORT = __TODO_PORT__;
+        window.MM_CURRENT_SCREEN = 1;
+    </script>
+    <script src="/static/shopping.js?v=__ASSET_VERSION__"></script>
+    <script src="/static/swipe-nav.js?v=__ASSET_VERSION__"></script>
+</body>
+
+</html>

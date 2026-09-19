@@ -6,6 +6,7 @@
     ports:
       - "5031:5031"   # Admin-Oberfläche (Widgets bearbeiten)
       - "5032:5032"   # Fullscreen-Spiegelanzeige
+      - "5033:5033"   # Einkaufsliste (Handy-UI)
     environment:
       - DATA_ROOT=/app/data
     volumes:

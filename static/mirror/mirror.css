@@ -13,7 +13,7 @@
     font-style: normal;
     font-weight: 300;
     font-display: swap;
-    src: url('/assets/fonts/inter-v13-latin-300.woff2') format('woff2');
+    src: url('./assets/fonts/inter-v13-latin-300.woff2') format('woff2');
 }
 
 @font-face {
@@ -21,7 +21,7 @@
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url('/assets/fonts/inter-v13-latin-400.woff2') format('woff2');
+    src: url('./assets/fonts/inter-v13-latin-400.woff2') format('woff2');
 }
 
 @font-face {
@@ -29,7 +29,7 @@
     font-style: normal;
     font-weight: 600;
     font-display: swap;
-    src: url('/assets/fonts/inter-v13-latin-600.woff2') format('woff2');
+    src: url('./assets/fonts/inter-v13-latin-600.woff2') format('woff2');
 }
 
 @font-face {
@@ -37,7 +37,7 @@
     font-style: normal;
     font-weight: 700;
     font-display: swap;
-    src: url('/assets/fonts/inter-v13-latin-700.woff2') format('woff2');
+    src: url('./assets/fonts/inter-v13-latin-700.woff2') format('woff2');
 }
 
 :root {
@@ -716,6 +716,149 @@ body {
     line-height: 1.35;
     color: var(--mm-accent);
     max-width: 100%;
+}
+
+/* ---------- Umwelt-/Erdbebenstation ---------- */
+.mm-env-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+}
+
+.mm-env-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mm-env-stat-value {
+    font-size: clamp(22px, 2.4vw, 34px);
+    font-weight: 300;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mm-env-stat-label {
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--mm-fg-faint);
+}
+
+.mm-env-iaq-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.mm-env-quake {
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: clamp(12px, 1vw, 14px);
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--mm-fg-faint);
+    color: var(--mm-fg-dim);
+    width: fit-content;
+}
+
+.mm-env-quake-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mm-up);
+    flex-shrink: 0;
+}
+
+.mm-env-quake.alert {
+    color: var(--mm-red);
+    border-color: var(--mm-red);
+    background: rgba(255, 85, 85, .12);
+    animation: mm-quake-pulse 1s ease-in-out infinite;
+}
+
+.mm-env-quake.alert .mm-env-quake-dot {
+    background: var(--mm-red);
+    box-shadow: 0 0 6px var(--mm-red);
+}
+
+@keyframes mm-quake-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .55;
+    }
+}
+
+.mm-env-digital {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: clamp(12px, 1vw, 14px);
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--mm-fg-faint);
+    color: var(--mm-fg-dim);
+    width: fit-content;
+}
+
+.mm-env-digital-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mm-fg-faint);
+    flex-shrink: 0;
+}
+
+.mm-env-digital.on {
+    color: var(--mm-up);
+    border-color: var(--mm-up);
+    background: rgba(127, 174, 122, .12);
+}
+
+.mm-env-digital.on .mm-env-digital-dot {
+    background: var(--mm-up);
+    box-shadow: 0 0 6px var(--mm-up);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mm-env-quake.alert {
+        animation: none;
+    }
+}
+
+/* ---------- Wisch-Navigation: Positions-Punkte ---------- */
+.mm-swipe-dots {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 50;
+    pointer-events: none;
+}
+
+.mm-swipe-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--mm-fg-faint);
+    opacity: .5;
+    transition: opacity .2s ease, background .2s ease;
+}
+
+.mm-swipe-dot.active {
+    background: var(--mm-accent);
+    opacity: 1;
 }
 
 /* ---------- Responsive: kleinere Displays / Hochkant ---------- */

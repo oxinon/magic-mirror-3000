@@ -29,12 +29,24 @@
         <div class="mm-cell" data-pos="r4-c4"></div>
     </div>
 
+    <div class="mm-swipe-dots" aria-hidden="true">
+        <span class="mm-swipe-dot"></span>
+        <span class="mm-swipe-dot"></span>
+        <span class="mm-swipe-dot"></span>
+    </div>
+
     <script>
         // API läuft auf demselben Host, aber auf API_PORT statt MIRROR_PORT.
         // Der Platzhalter wird vom Server beim Ausliefern ersetzt (siehe app.py).
         window.MM_API_PORT = __API_PORT__;
+        // Für die Wisch-Navigation zwischen den drei Screens (siehe swipe-nav.js).
+        window.MM_MIRROR_PORT = __MIRROR_PORT__;
+        window.MM_SHOPPING_PORT = __SHOPPING_PORT__;
+        window.MM_TODO_PORT = __TODO_PORT__;
+        window.MM_CURRENT_SCREEN = 0;
     </script>
     <script src="/static/mirror.js?v=__ASSET_VERSION__"></script>
+    <script src="/static/swipe-nav.js?v=__ASSET_VERSION__"></script>
 </body>
 
 </html>

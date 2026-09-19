@@ -76,6 +76,8 @@ const AT = {
         widgetTitle_ews: 'Apocalypse EWS',
         widgetTitle_defcon: 'DEFCON-Einschätzung',
         widgetTitle_compliments: 'Komplimente',
+        widgetTitle_envSensor: 'Umweltstation',
+        widgetTitle_shoppingList: 'Einkaufsliste',
 
         clockDateFormatLabel: 'Datumsformat (Locale)',
         clockDateFormatDe: 'Deutsch',
@@ -120,6 +122,11 @@ const AT = {
         todoAddBtn: '+ Eintrag hinzufügen',
         todoHint: 'Wird nur angezeigt – auf der Spiegelanzeige selbst nicht anklickbar.',
 
+        shoppingEntriesLabel: 'Artikel',
+        shoppingEntryPlaceholder: 'Artikel',
+        shoppingAddBtn: '+ Artikel hinzufügen',
+        shoppingHint: 'Erledigte Artikel (angehakt) werden auf dem Spiegel ausgeblendet – dort steht nur, was noch zu besorgen ist. Von unterwegs bequem mit dem Handy pflegen unter <code>http://&lt;diese-Server-Adresse&gt;:5033</code>.',
+
         stocksSymbolsLabel: 'Symbole (Yahoo-Finance-Format)',
         stocksAddPlaceholder: 'Symbol hinzufügen + Enter',
         stocksAddBtn: '+ Hinzufügen',
@@ -154,6 +161,9 @@ const AT = {
         defconApiKeyPlaceholder: 'Nur falls die Schnittstelle abgesichert ist',
         defconRotationLabel: 'Wechsel-Intervall bei mehr als 4 Regionen (Sek.)',
         defconHint: 'Zeigt alle Regionen aus der API-Antwort mit ihrem aktuellen Wert, maximal 4 gleichzeitig – bei mehr Regionen wird automatisch in 4er-Gruppen durchgewechselt. Läuft der Spiegel im selben Docker-Netzwerk wie <code>defcon-assistant</code>, funktioniert die interne Adresse (<code>http://defcon-assistant:5028/...</code>) direkt, ohne Umweg über das öffentliche Internet.',
+
+        envUrlLabel: 'Sensor-Adresse',
+        envHint: 'Adresse deiner T-Display-S3-Umweltstation, z.B. <code>http://192.168.1.50/api/status</code> (die IP wird beim Boot des Geräts auf dessen Display angezeigt). Zeigt Temperatur, Luftfeuchtigkeit, Luftdruck, Luftqualitätsindex (IAQ) und den Erschütterungs-/Erdbeben-Status. Kein API-Key nötig.',
 
         complimentsItemsLabel: 'Komplimente (werden im Wechsel angezeigt)',
         complimentPlaceholder: 'Kompliment',
@@ -209,6 +219,8 @@ const AT = {
         widgetTitle_ews: 'Apocalypse EWS',
         widgetTitle_defcon: 'DEFCON Assessment',
         widgetTitle_compliments: 'Compliments',
+        widgetTitle_envSensor: 'Environment Station',
+        widgetTitle_shoppingList: 'Shopping List',
 
         clockDateFormatLabel: 'Date format (locale)',
         clockDateFormatDe: 'German',
@@ -253,6 +265,11 @@ const AT = {
         todoAddBtn: '+ Add entry',
         todoHint: 'Display only – not clickable on the mirror display itself.',
 
+        shoppingEntriesLabel: 'Items',
+        shoppingEntryPlaceholder: 'Item',
+        shoppingAddBtn: '+ Add item',
+        shoppingHint: 'Checked-off items are hidden on the mirror – it only shows what\'s still needed. Edit conveniently from your phone at <code>http://&lt;this-server-address&gt;:5033</code>.',
+
         stocksSymbolsLabel: 'Symbols (Yahoo Finance format)',
         stocksAddPlaceholder: 'Add symbol + Enter',
         stocksAddBtn: '+ Add',
@@ -287,6 +304,9 @@ const AT = {
         defconApiKeyPlaceholder: 'Only if the endpoint is secured',
         defconRotationLabel: 'Rotation interval for more than 4 regions (sec.)',
         defconHint: 'Shows all regions from the API response with their current value, up to 4 at once – with more regions it automatically rotates through groups of 4. If the mirror runs on the same Docker network as <code>defcon-assistant</code>, the internal address (<code>http://defcon-assistant:5028/...</code>) works directly, without going through the public internet.',
+
+        envUrlLabel: 'Sensor address',
+        envHint: 'Address of your T-Display-S3 environment station, e.g. <code>http://192.168.1.50/api/status</code> (the IP is shown on the device\'s display at boot). Shows temperature, humidity, air pressure, an air-quality index (IAQ), and the vibration/earthquake status. No API key needed.',
 
         complimentsItemsLabel: 'Compliments (shown in rotation)',
         complimentPlaceholder: 'Compliment',
@@ -367,6 +387,8 @@ const WIDGET_ICONS = {
     clock: '🕐', calendar: '📅', weather: '🌤', news: '📰', crypto: '💰',
     stocks: '📈', todo: '📝', quote: '💬', serverStatus: '🖥', warnings: '⚠️',
     airQuality: '🌬️', elbePegel: '🌊', ews: '✈️', defcon: '🚨', compliments: '💌',
+    envSensor: '📡',
+    shoppingList: '🛒',
 };
 const WIDGET_IDS = Object.keys(WIDGET_ICONS);
 
@@ -645,6 +667,27 @@ function widgetSpecificFields(id, wcfg) {
             </div>`;
     }
 
+    if (id === 'shoppingList') {
+        const items = wcfg.items || [];
+        const rows = items.map((it) => `
+            <div class="mm-list-row" data-shopping-row>
+                <label class="mm-switch" style="width:36px;flex-shrink:0;"><input type="checkbox" data-shopping-done ${it.done ? 'checked' : ''}><span class="mm-switch-slider"></span></label>
+                <input type="text" class="mm-text-field" placeholder="${at('shoppingEntryPlaceholder')}" data-shopping-text value="${escapeHtml(it.text || '')}">
+                <button type="button" class="mm-list-row-remove" onclick="this.closest('[data-shopping-row]').remove()">✕</button>
+            </div>`).join('');
+        return `
+            ${titleFieldHtml(wcfg)}
+            <div class="mm-form-row">
+                <label>${at('shoppingEntriesLabel')}</label>
+                <div class="mm-list-editor" id="shopping-item-list">
+                    ${rows}
+                </div>
+                <button type="button" class="mm-list-add-btn" onclick="addShoppingItemRow()">${at('shoppingAddBtn')}</button>
+            </div>
+            ${widthSelectHtml(wcfg)}
+            <div class="mm-hint">${at('shoppingHint')}</div>`;
+    }
+
     if (id === 'todo') {
         const items = wcfg.items || [];
         const rows = items.map((it) => `
@@ -801,6 +844,17 @@ function widgetSpecificFields(id, wcfg) {
             <div class="mm-hint">${at('defconHint')}</div>`;
     }
 
+    if (id === 'envSensor') {
+        return `
+            ${titleFieldHtml(wcfg)}
+            <div class="mm-form-row">
+                <label>${at('envUrlLabel')}</label>
+                <input type="url" data-field="url" placeholder="http://192.168.1.50/api/status" value="${escapeHtml(wcfg.url || '')}">
+            </div>
+            ${widthSelectHtml(wcfg)}
+            <div class="mm-hint">${at('envHint')}</div>`;
+    }
+
     if (id === 'compliments') {
         const items = wcfg.items || [];
         const rows = items.map((text) => `
@@ -933,6 +987,19 @@ function addTodoItemRow() {
         <button type="button" class="mm-list-row-remove" onclick="this.closest('[data-todo-row]').remove()">✕</button>`;
     list.appendChild(row);
     row.querySelector('[data-todo-text]').focus();
+}
+
+function addShoppingItemRow() {
+    const list = document.getElementById('shopping-item-list');
+    const row = document.createElement('div');
+    row.className = 'mm-list-row';
+    row.dataset.shoppingRow = '';
+    row.innerHTML = `
+        <label class="mm-switch" style="width:36px;flex-shrink:0;"><input type="checkbox" data-shopping-done><span class="mm-switch-slider"></span></label>
+        <input type="text" class="mm-text-field" placeholder="${at('shoppingEntryPlaceholder')}" data-shopping-text value="">
+        <button type="button" class="mm-list-row-remove" onclick="this.closest('[data-shopping-row]').remove()">✕</button>`;
+    list.appendChild(row);
+    row.querySelector('[data-shopping-text]').focus();
 }
 
 // ── Komplimente-Editor ────────────────────────────────────────────
@@ -1099,6 +1166,10 @@ function collectFormIntoConfig() {
             wcfg.span = Number(wcfg.span) || 1;
         }
 
+        if (id === 'envSensor') {
+            wcfg.span = Number(wcfg.span) || 1;
+        }
+
         if (id === 'compliments') {
             const rows = card.querySelectorAll('[data-compliment-row]');
             wcfg.items = [...rows].map(r => r.querySelector('[data-compliment-text]').value.trim()).filter(Boolean);
@@ -1120,6 +1191,15 @@ function collectFormIntoConfig() {
                 text: r.querySelector('[data-todo-text]').value.trim(),
                 done: r.querySelector('[data-todo-done]').checked,
             })).filter(it => it.text);
+        }
+
+        if (id === 'shoppingList') {
+            const rows = card.querySelectorAll('[data-shopping-row]');
+            wcfg.items = [...rows].map(r => ({
+                text: r.querySelector('[data-shopping-text]').value.trim(),
+                done: r.querySelector('[data-shopping-done]').checked,
+            })).filter(it => it.text);
+            wcfg.span = Number(wcfg.span) || 1;
         }
 
         if (id === 'weather') {

@@ -54,6 +54,21 @@
             defconUnavailable: 'DEFCON-Daten nicht verfügbar',
             defconNoRegions: 'Keine Regionen verfügbar',
             defconUnreachable: 'DEFCON-Daten nicht erreichbar',
+            envDefaultTitle: 'Umweltstation',
+            envUnavailable: 'Sensordaten nicht verfügbar',
+            envUnreachable: 'Sensordaten nicht erreichbar',
+            envQuakeAlert: 'Erkannt',
+            envQuakeCalm: 'Ruhig',
+            envEarthquakeLabel: 'Earthquake Alert',
+            envDigitalLabel: 'Digital-Eingang',
+            envDigitalOn: 'Ein',
+            envDigitalOff: 'Aus',
+            envTempLabel: 'Temp.',
+            iaqExcellent: 'Ausgezeichnet',
+            iaqGood: 'Gut',
+            iaqModerate: 'Mittel',
+            iaqPoor: 'Schlecht',
+            iaqVeryPoor: 'Sehr schlecht',
             complimentsDefaultTitle: 'Komplimente',
             complimentsNoItems: 'Keine Komplimente hinterlegt',
             todoDefaultTitle: 'Notizen',
@@ -112,6 +127,21 @@
             defconUnavailable: 'DEFCON data unavailable',
             defconNoRegions: 'No regions available',
             defconUnreachable: 'DEFCON data unreachable',
+            envDefaultTitle: 'Environment Station',
+            envUnavailable: 'Sensor data unavailable',
+            envUnreachable: 'Sensor data unreachable',
+            envQuakeAlert: 'Detected',
+            envQuakeCalm: 'Calm',
+            envEarthquakeLabel: 'Earthquake Alert',
+            envDigitalLabel: 'Digital Input',
+            envDigitalOn: 'On',
+            envDigitalOff: 'Off',
+            envTempLabel: 'Temp.',
+            iaqExcellent: 'Excellent',
+            iaqGood: 'Good',
+            iaqModerate: 'Moderate',
+            iaqPoor: 'Poor',
+            iaqVeryPoor: 'Very poor',
             complimentsDefaultTitle: 'Compliments',
             complimentsNoItems: 'No compliments configured',
             todoDefaultTitle: 'Notes',
@@ -847,6 +877,76 @@
         }
     }
 
+    // ---------------- Umwelt-/Erdbebenstation ----------------
+    function iaqBand(score) {
+        if (score == null) return { cls: '', label: '' };
+        if (score >= 80) return { cls: 'aqi-good', label: t('iaqExcellent') };
+        if (score >= 60) return { cls: 'aqi-good', label: t('iaqGood') };
+        if (score >= 40) return { cls: 'aqi-moderate', label: t('iaqModerate') };
+        if (score >= 20) return { cls: 'aqi-poor', label: t('iaqPoor') };
+        return { cls: 'aqi-poor', label: t('iaqVeryPoor') };
+    }
+
+    async function renderEnvSensor(wcfg) {
+        const cell = cellFor(wcfg.position);
+        if (!cell) return;
+        applyColumnSpan(cell, wcfg.position, wcfg.span);
+        let body = cell.querySelector('.mm-env-body');
+        if (!body || cell.dataset.widget !== 'envSensor') {
+            cell.innerHTML = '';
+            const shell = widgetShell(wcfg.title || t('envDefaultTitle'));
+            body = document.createElement('div');
+            body.className = 'mm-env-body';
+            shell.appendChild(body);
+            cell.appendChild(shell);
+            cell.dataset.widget = 'envSensor';
+        }
+
+        try {
+            const data = await fetchJson('/api/env-sensor');
+            if (!data.ok) {
+                body.innerHTML = `<div class="mm-empty">${data.msg || t('envUnavailable')}</div>`;
+                return;
+            }
+
+            const stats = [];
+            if (data.temp != null) stats.push({ value: `${data.temp.toFixed(1)}°`, label: t('envTempLabel') });
+            if (data.humidity != null) stats.push({ value: `${Math.round(data.humidity)}%`, label: 'RH' });
+            if (data.pressure != null) stats.push({ value: `${Math.round(data.pressure)}`, label: 'hPa' });
+
+            const band = iaqBand(data.iaqScore);
+            const quakeAlert = !!data.quakeTriggered;
+            const hasDigital = data.digitalInputOn != null;
+            const digitalOn = !!data.digitalInputOn;
+
+            body.innerHTML = `
+                <div class="mm-env-stats">
+                    ${stats.map(s => `
+                        <div class="mm-env-stat">
+                            <span class="mm-env-stat-value">${s.value}</span>
+                            <span class="mm-env-stat-label">${escapeHtml(s.label)}</span>
+                        </div>`).join('')}
+                </div>
+                ${data.iaqScore != null ? `
+                    <div class="mm-env-iaq-row">
+                        <span class="mm-aqi-value ${band.cls}" style="font-size:clamp(20px,2vw,30px);">${Math.round(data.iaqScore)}</span>
+                        <span class="mm-aqi-label">IAQ · ${band.label}</span>
+                    </div>` : ''}
+                <div class="mm-env-quake${quakeAlert ? ' alert' : ''}">
+                    <span class="mm-env-quake-dot"></span>
+                    <span>${t('envEarthquakeLabel')}: ${quakeAlert ? t('envQuakeAlert') : t('envQuakeCalm')}</span>
+                </div>
+                ${hasDigital ? `
+                    <div class="mm-env-digital${digitalOn ? ' on' : ''}">
+                        <span class="mm-env-digital-dot"></span>
+                        <span>${t('envDigitalLabel')}: ${digitalOn ? t('envDigitalOn') : t('envDigitalOff')}</span>
+                    </div>` : ''}
+            `;
+        } catch (e) {
+            body.innerHTML = `<div class="mm-empty">${t('envUnreachable')}</div>`;
+        }
+    }
+
     // ---------------- Notizen / To-Do ----------------
     function renderTodo(wcfg) {
         const cell = cellFor(wcfg.position);
@@ -892,6 +992,7 @@
         ews: renderEws,
         defcon: renderDefcon,
         compliments: renderCompliments,
+        envSensor: renderEnvSensor,
     };
 
     const REFRESH_MS = {
@@ -907,6 +1008,7 @@
         elbePegel: 15 * 60 * 1000,
         ews: 20 * 60 * 1000,
         defcon: 5 * 60 * 1000,
+        envSensor: 5 * 1000,
     };
 
     function clearAllCells() {
